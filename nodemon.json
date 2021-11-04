@@ -1,0 +1,10 @@
+{
+    "env": {
+      "__DEV__": true
+    },
+    "delay": 1000,
+    "watch": ["dist/development"],
+    "ignore": ["tests/**/*.spec.ts", "public/*"],
+    "exec": "node --max-http-header-size=262144 --inspect ./dist/dev/server.js"
+  }
+  

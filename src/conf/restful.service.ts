@@ -31,7 +31,7 @@ const RestfulService: { [key: string]: Resuful } = {
         Service: ServiceType.Login,
         NeedLogin: false,
         ServiceOnly: true
-    },
+    }
 }
 
 export { RestfulService, ServiceHost }

@@ -15,3 +15,9 @@ export interface Image {
     Created: string
     Size: string
 }
+
+export enum ContainerStatus {
+    Run = "Run",
+    Stop = "Stop"
+
+}

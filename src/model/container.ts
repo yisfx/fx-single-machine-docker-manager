@@ -1,4 +1,4 @@
-export interface Container {
+export interface DockerContainer {
     ContainerID: string
     Image: string
     Command: string
@@ -8,7 +8,7 @@ export interface Container {
     Name: string
 }
 
-export interface Image {
+export interface DockerImage {
     Repository: string
     Tag: string
     ImageID: string
@@ -18,6 +18,7 @@ export interface Image {
 
 export enum ContainerStatus {
     Run = "Run",
-    Stop = "Stop"
+    Stop = "Stop",
+    Delete = "Delete"
 
 }

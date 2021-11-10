@@ -1,10 +1,13 @@
 import React, { useState } from "react"
 import MasterPage from "../../../framework/master/@masterPage"
 import Master from "../../../framework/master/master"
-import { ContainerStatus, Image } from "../../../model/container"
+import { ContainerStatus, DockerImage } from "../../../model/container"
 import { Ajax } from "../../../framework/httpclient/ajax"
 import { ManageStore } from "../store/manage.store"
-
+import { FXModal } from "../../../framework/components/modal/fxModal"
+import { InspectResponse } from "../../../model/response/inspectImage.response"
+import { InspectImageRequest } from "../../../model/request/inspectImage.request"
+import { ServiceArgRequest } from "../../../model/request/servicearg.request";
 
 
 function Container(props: ManageStore) {
@@ -46,6 +49,12 @@ function Container(props: ManageStore) {
                                     })
                                 }}>Start</button>
                             }
+                            <hr />
+                            <button onClick={() => {
+                                Ajax("StartContainer", { Status: ContainerStatus.Delete, ContainerName: c.Name }).then(res => {
+                                    window.location.reload();
+                                })
+                            }}>Delete</button>
                         </td>
                     </tr>
                 )}
@@ -54,7 +63,24 @@ function Container(props: ManageStore) {
     </div>
 }
 
-function Images(props: { Images: Image[] }) {
+function Images(props: ManageStore) {
+    const [modalImage, SetModalImage] = useState(null as DockerImage)
+    const [inspectImage, setInspect] = useState({ image: null as DockerImage, Inspect: {} })
+    const [args, setArgs] = useState({
+        portA: 0,
+        portB: 0,
+        volumeA: "/home/ubuntu/application/album",
+        volumeB: "/app/album",
+        ContainerName: "",
+    })
+
+    const setPort = (port: string) => {
+        const p = parseInt(port)
+        if (p > 0 && p < 65535)
+            return p
+        return 0
+    }
+
     return <div className="table-responsive">
         <table className="table ">
             <thead>
@@ -68,23 +94,120 @@ function Images(props: { Images: Image[] }) {
                 </tr>
             </thead>
             <tbody>
-                {props.Images.map(c =>
-                    <tr key={c.ImageID}>
-                        <td><label title={c.Repository}>{c.Repository}</label></td>
-                        <td><label title={c.Tag}>{c.Tag}</label></td>
-                        <td><label title={c.ImageID}>{c.ImageID}</label></td>
-                        <td><label title={c.Created}>{c.Created}</label></td>
-                        <td><label title={c.Size}>{c.Size}</label></td>
+                {props.images?.map(i =>
+                    <tr key={`${i.ImageID}-${i.Repository}-${i.Tag}`}>
+                        <td><label title={i.Repository}>{i.Repository}</label></td>
+                        <td><label title={i.Tag}>{i.Tag}</label></td>
+                        <td><label title={i.ImageID}>{i.ImageID}</label></td>
+                        <td><label title={i.Created}>{i.Created}</label></td>
+                        <td><label title={i.Size}>{i.Size}</label></td>
                         <td>
+                            {props.container.findIndex(c => c.Image == `${i.Repository}:${i.Tag}`) < 0 &&
+                                <>
+                                    <button onClick={() => {
+                                        SetModalImage(i);
+                                        // show modal
+                                    }}>Create a Container</button>
+                                    <hr />
+                                </>
+                            }
                             <button onClick={() => {
-                                // show modal
-                            }}>Create a Container</button>
+                                Ajax<InspectImageRequest>("Inspect", { ImageID: i.ImageID }).then((res: InspectResponse) => {
+                                    setInspect({ image: i, Inspect: res.Inspect ?? res.ErrorMessage })
+                                })
+                            }}>Inspect</button>
                         </td>
                     </tr>
                 )}
             </tbody>
-        </table>
-    </div>
+        </table >
+        {
+            !!modalImage &&
+            <FXModal
+                isOpen={!!modalImage}
+                size={{ height: "70vh", width: "60wh", marginLeft: "40px", marginTop: "20px" }}
+                close={() => {
+                    SetModalImage(null)
+                    setArgs(null)
+                }}
+                showCloseBtn={true}
+                backDropClose={false}
+                OverScrollY={true}
+            >
+                <div style={{ overflowX: "hidden" }}>
+                    <h3 className="row">    Container Run Args</h3>
+                    <pre>
+                        <br />
+                        <span>docker run -d</span><br />
+                        {" -p "}<input
+                            type="text"
+                            maxLength={5}
+                            width={600}
+                            value={args?.portA}
+                            onChange={(evt) => {
+                                setArgs({ ...args, portA: setPort(evt.target.value) })
+                            }} />:<input
+                            type="text"
+                            width={600}
+                            maxLength={5}
+                            value={args?.portB}
+                            onChange={(evt) => {
+                                setArgs({ ...args, portB: setPort(evt.target.value) })
+                            }} />
+                        <br />
+                        {" -v "}
+                        <input
+                            type="text"
+                            value={args?.volumeA}
+                            onChange={(evt) => {
+                                setArgs({ ...args, volumeA: evt.target.value })
+                            }} />:<input
+                            type="text"
+                            value={args?.volumeB}
+                            onChange={(evt) => {
+                                setArgs({ ...args, volumeB: evt.target.value })
+                            }} />
+                        <br />
+                        {" --name="}<input
+                            type="text"
+                            value={args?.ContainerName}
+                            onChange={(evt) => {
+                                setArgs({ ...args, ContainerName: evt.target.value })
+                            }} />
+                        <br />
+                        {` --net=host `}
+                        <br />
+                        {`${modalImage.Repository}:${modalImage.Tag}`}
+                    </pre>
+                    <button onClick={() => {
+                        Ajax<ServiceArgRequest>("runserviceApi", { ...args, Image: modalImage }).then(res => {
+                            window.location.reload()
+                        })
+                    }}> Run...</button>
+                </div>
+            </FXModal>
+        }
+        {
+            !!inspectImage?.image &&
+            <FXModal
+                isOpen={!!inspectImage?.image}
+                size={{ height: "70vh", width: "60wh", marginLeft: "40px", marginTop: "10px" }}
+                close={() => {
+                    setInspect(null)
+                }}
+                showCloseBtn={true}
+                backDropClose={false}
+                OverScrollY={true}
+            >
+                <div style={{ overflowX: "hidden" }}>
+                    <h4 className="row">{`    ${inspectImage.image.Repository}:${inspectImage.image.Tag} Inspect`}</h4>
+                    <pre>
+                        {JSON.stringify(inspectImage.Inspect, null, 2)}
+                    </pre>
+                </div>
+            </FXModal>
+        }
+    </div >
 }
 
 function Content(props: ManageStore) {
@@ -101,7 +224,7 @@ function Content(props: ManageStore) {
             <hr />
 
             {curShow == 1 && <Container {...props} />}
-            {curShow == 2 && <Images Images={props.images} />}
+            {curShow == 2 && <Images {...props} />}
         </div>
     </div>
 }

@@ -1,6 +1,6 @@
-import { Container, Image } from "../../../model/container";
+import { DockerContainer, DockerImage } from "../../../model/container";
 
 export interface ManageStore {
-    container: Container[]
-    images: Image[]
+    container: DockerContainer[]
+    images: DockerImage[]
 }

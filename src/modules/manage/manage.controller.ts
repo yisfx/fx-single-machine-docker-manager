@@ -1,6 +1,6 @@
 import { Controller, UseGuards, UseInterceptors, Get, Res, Req, Post } from "@nestjs/common";
 import process from "child_process";
-import { Container, ContainerStatus, Image } from "../../model/container";
+import { DockerContainer, ContainerStatus, DockerImage } from "../../model/container";
 import { FastifyReply } from "fastify";
 import { FastifyRequestWithCookie } from "../../model/types/FastifyReqWithCookie";
 import { LayoutInterceptor } from "../../framework/interceptor/layout.Interceptor";
@@ -8,7 +8,8 @@ import { RouteConfig } from "../../framework/route.config";
 import { RouteRender } from "../../framework/decorators/RouteRender.decorator";
 import { OperateContainerRequest } from "../../model/request/containeroperate.request";
 import { BaseResponse } from "../../model/response/baseResponse";
-
+import { InspectResponse } from "../../model/response/inspectImage.response"
+import { ServiceArgRequest } from "../../model/request/servicearg.request";
 
 @Controller()
 @UseInterceptors(LayoutInterceptor)
@@ -19,7 +20,7 @@ export class ManageController {
     }
 
 
-    GetContainerList(): Container[] {
+    GetContainerList(): DockerContainer[] {
         var containerList = process.execSync("docker ps -a").toString();
         const lines = containerList.split('\n').filter(l => !!l.trim()).filter((l, index) => index != 0)
         let result = []
@@ -39,7 +40,7 @@ export class ManageController {
     }
 
 
-    GetImages(): Image[] {
+    GetImages(): DockerImage[] {
         var containerList = process.execSync("docker images").toString();
         const lines = containerList.split('\n').filter(l => !!l.trim()).filter((l, index) => index != 0)
         let result = []
@@ -78,7 +79,48 @@ export class ManageController {
         if (body.Status == ContainerStatus.Stop) {
             response.ErrorMessage = process.execSync(`docker stop ${body.ContainerName}`).toString();
         }
+        if (body.Status == ContainerStatus.Delete) {
+            response.ErrorMessage = process.execSync(`docker rm -f ${body.ContainerName}`).toString()
+        }
         res.send(JSON.stringify(response));
+    }
+
+    @Post("/ajax/api/Inspect")
+    async InspectImage(@Req() req: FastifyRequestWithCookie, @Res() res: FastifyReply) {
+        const body = req.body as { ImageID: string }
+        let response: InspectResponse = {
+            Inspect: JSON.parse(process.execSync(`docker inspect ${body.ImageID}`).toString()),
+            Result: true,
+            ErrorMessage: ""
+        };
+        res.send(response)
+    }
+
+    @Post("/ajax/api/runserviceApi")
+    async RunService(@Req() req: FastifyRequestWithCookie, @Res() res: FastifyReply) {
+        let body = req.body as ServiceArgRequest
+
+        let command = "docker run -d ";
+        if (body.portA > 0 && body.portB > 0) {
+            command += `-p ${body.portA}:${body.portB} `
+        }
+        if (body.volumeA && body.volumeB) {
+            command += `-v ${body.volumeA}:${body.volumeB} `
+        }
+        if (body.ContainerName) {
+            command += `--name=${body.ContainerName} `
+        }
+
+        command += `--net=host ${body.Image.Repository}:${body.Image.Tag}`
+
+        console.log(command);
+
+        const msg = process.execSync(command).toString();
+        console.log(msg)
+
+
+        res.send("")
+
     }
 
 }

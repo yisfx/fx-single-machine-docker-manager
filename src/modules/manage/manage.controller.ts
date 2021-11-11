@@ -123,4 +123,23 @@ export class ManageController {
 
     }
 
+    @Post("/ajax/api/deleteImageApi")
+    async DeleteImage(@Req() req: FastifyRequestWithCookie, @Res() res: FastifyReply) {
+        var body = req.body as { ImageName: string }
+        const command = `docker image rm ${body.ImageName}`
+        let response: BaseResponse = { Result: true, ErrorMessage: "" }
+        response.ErrorMessage = process.execSync(command).toString()
+        res.send(JSON.stringify(response));
+    }
+
+    @Post("/ajax/api/pullImageApi")
+    async PullImage(@Req() req: FastifyRequestWithCookie, @Res() res: FastifyReply) {
+        var body = req.body as { ImageName: string }
+        const command = `docker pull ${body.ImageName}`
+        let response: BaseResponse = { Result: true, ErrorMessage: "" }
+        response.ErrorMessage = process.execSync(command).toString()
+        res.send(JSON.stringify(response));
+
+    }
+
 }
